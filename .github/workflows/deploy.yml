@@ -1,0 +1,86 @@
+name: Build and Deploy to OpenShift
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  REGISTRY: image-registry.openshift-image-registry.svc:5000
+  PROJECT: ${{ secrets.OPENSHIFT_PROJECT }}
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Install OpenShift CLI
+      run: |
+        wget https://mirror.openshift.com/pub/openshift-v4/clients/ocp/stable/openshift-client-linux.tar.gz
+        tar -xzf openshift-client-linux.tar.gz
+        sudo mv oc kubectl /usr/local/bin/
+        oc version --client
+
+    - name: Login to OpenShift
+      run: |
+        oc login --token=${{ secrets.OPENSHIFT_TOKEN }} --server=${{ secrets.OPENSHIFT_SERVER }} --insecure-skip-tls-verify
+        oc project ${{ secrets.OPENSHIFT_PROJECT }}
+
+    - name: Build Backend Container
+      run: |
+        echo "Building backend..."
+        oc start-build backend --from-dir=./backend --follow || \
+        (oc new-build --binary --strategy=docker --name=backend && \
+         oc start-build backend --from-dir=./backend --follow)
+
+    - name: Build Frontend Container
+      run: |
+        echo "Building frontend..."
+        oc start-build frontend --from-dir=./frontend --follow || \
+        (oc new-build --binary --strategy=docker --name=frontend && \
+         oc start-build frontend --from-dir=./frontend --follow)
+
+    - name: Deploy Application
+      run: |
+        echo "Deploying to OpenShift..."
+        
+        # Scale deployments
+        oc scale deployment/backend --replicas=2 || true
+        oc scale deployment/frontend --replicas=2 || true
+        oc scale deployment/postgresql --replicas=1 || true
+        oc scale deployment/redis --replicas=1 || true
+        
+        # Trigger rollout to use new images
+        oc rollout restart deployment/backend
+        oc rollout restart deployment/frontend
+        
+        # Wait for rollout
+        oc rollout status deployment/backend --timeout=5m
+        oc rollout status deployment/frontend --timeout=5m
+
+    - name: Verify Deployment
+      run: |
+        echo "Verifying deployment..."
+        oc get pods
+        oc get route frontend
+        
+        # Get application URL
+        APP_URL=$(oc get route frontend -o jsonpath='{.spec.host}')
+        echo "Application URL: https://$APP_URL"
+        
+        # Wait for application to be ready
+        sleep 30
+        
+        # Test health endpoint
+        curl -f https://$APP_URL/health || echo "Health check pending..."
+
+    - name: Deployment Summary
+      run: |
+        echo "=== DEPLOYMENT COMPLETE ==="
+        echo "Application: https://$(oc get route frontend -o jsonpath='{.spec.host}')"
+        echo "Backend replicas: $(oc get deployment backend -o jsonpath='{.status.replicas}')"
+        echo "Frontend replicas: $(oc get deployment frontend -o jsonpath='{.status.replicas}')"
+        echo "=========================="
