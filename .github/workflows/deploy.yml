@@ -1,4 +1,4 @@
-name: Build and Deploy to OpenShift
+76name: Build and Deploy to OpenShift
 
 on:
   push:
@@ -73,17 +73,17 @@ jobs:
     - name: Authenticate to OpenShift
       run: |
         oc login --token=${{ secrets.OPENSHIFT_TOKEN }} --server=${{ secrets.OPENSHIFT_SERVER }} --insecure-skip-tls-verify
-        oc project ${{ secrets.OPENSHIFT_NAMESPACE }}
+        oc project ${{ secrets.OPENSHIFT_PROJECT }}
 
     - name: Update Backend deployment
       run: |
-        oc set image deployment/backend backend=${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BACKEND }}:latest -n ${{ secrets.OPENSHIFT_NAMESPACE }}
-        oc rollout status deployment/backend -n ${{ secrets.OPENSHIFT_NAMESPACE }}
+        oc set image deployment/backend backend=${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BACKEND }}:latest -n ${{ secrets.OPENSHIFT_PROJECT }}
+        oc rollout status deployment/backend -n ${{ secrets.OPENSHIFT_PROJECT }}
 
     - name: Update Frontend deployment
       run: |
-        oc set image deployment/frontend frontend=${{ env.REGISTRY }}/${{ env.IMAGE_NAME_FRONTEND }}:latest -n ${{ secrets.OPENSHIFT_NAMESPACE }}
-        oc rollout status deployment/frontend -n ${{ secrets.OPENSHIFT_NAMESPACE }}
+        oc set image deployment/frontend frontend=${{ env.REGISTRY }}/${{ env.IMAGE_NAME_FRONTEND }}:latest -n ${{ secrets.OPENSHIFT_PROJECT }}
+        oc rollout status deployment/frontend -n ${{ secrets.OPENSHIFT_PROJECT }}
 
     - name: Verify deployment
       run: |
