@@ -3,84 +3,95 @@ name: Build and Deploy to OpenShift
 on:
   push:
     branches: [ main ]
-  workflow_dispatch:
+  pull_request:
+    branches: [ main ]
 
 env:
-  REGISTRY: image-registry.openshift-image-registry.svc:5000
-  PROJECT: ${{ secrets.OPENSHIFT_PROJECT }}
+  REGISTRY: ghcr.io
+  IMAGE_NAME_BACKEND: ${{ github.repository }}/backend
+  IMAGE_NAME_FRONTEND: ${{ github.repository }}/frontend
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    
+    permissions:
+      contents: read
+      packages: write
+
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Log in to GitHub Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Extract metadata for Backend
+      id: meta-backend
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BACKEND }}
+        tags: |
+          type=sha,prefix={{branch}}-
+          type=raw,value=latest
+
+    - name: Build and push Backend image
+      uses: docker/build-push-action@v5
+      with:
+        context: ./backend
+        file: ./backend/Dockerfile
+        push: true
+        tags: ${{ steps.meta-backend.outputs.tags }}
+        labels: ${{ steps.meta-backend.outputs.labels }}
+
+    - name: Extract metadata for Frontend
+      id: meta-frontend
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_FRONTEND }}
+        tags: |
+          type=sha,prefix={{branch}}-
+          type=raw,value=latest
+
+    - name: Build and push Frontend image
+      uses: docker/build-push-action@v5
+      with:
+        context: ./frontend
+        file: ./frontend/Dockerfile
+        push: true
+        tags: ${{ steps.meta-frontend.outputs.tags }}
+        labels: ${{ steps.meta-frontend.outputs.labels }}
 
     - name: Install OpenShift CLI
-      run: |
-        wget https://mirror.openshift.com/pub/openshift-v4/clients/ocp/stable/openshift-client-linux.tar.gz
-        tar -xzf openshift-client-linux.tar.gz
-        sudo mv oc kubectl /usr/local/bin/
-        oc version --client
+      uses: redhat-actions/openshift-tools-installer@v1
+      with:
+        oc: 4
 
-    - name: Login to OpenShift
+    - name: Authenticate to OpenShift
       run: |
         oc login --token=${{ secrets.OPENSHIFT_TOKEN }} --server=${{ secrets.OPENSHIFT_SERVER }} --insecure-skip-tls-verify
-        oc project ${{ secrets.OPENSHIFT_PROJECT }}
+        oc project ${{ secrets.OPENSHIFT_NAMESPACE }}
 
-    - name: Build Backend Container
+    - name: Update Backend deployment
       run: |
-        echo "Building backend..."
-        oc start-build backend --from-dir=./backend --follow || \
-        (oc new-build --binary --strategy=docker --name=backend && \
-         oc start-build backend --from-dir=./backend --follow)
+        oc set image deployment/backend backend=${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BACKEND }}:latest
+        oc rollout status deployment/backend
 
-    - name: Build Frontend Container
+    - name: Update Frontend deployment
       run: |
-        echo "Building frontend..."
-        oc start-build frontend --from-dir=./frontend --follow || \
-        (oc new-build --binary --strategy=docker --name=frontend && \
-         oc start-build frontend --from-dir=./frontend --follow)
+        oc set image deployment/frontend frontend=${{ env.REGISTRY }}/${{ env.IMAGE_NAME_FRONTEND }}:latest
+        oc rollout status deployment/frontend
 
-    - name: Deploy Application
+    - name: Verify deployment
       run: |
-        echo "Deploying to OpenShift..."
-        
-        # Scale deployments
-        oc scale deployment/backend --replicas=2 || true
-        oc scale deployment/frontend --replicas=2 || true
-        oc scale deployment/postgresql --replicas=1 || true
-        oc scale deployment/redis --replicas=1 || true
-        
-        # Trigger rollout to use new images
-        oc rollout restart deployment/backend
-        oc rollout restart deployment/frontend
-        
-        # Wait for rollout
-        oc rollout status deployment/backend --timeout=5m
-        oc rollout status deployment/frontend --timeout=5m
-
-    - name: Verify Deployment
-      run: |
-        echo "Verifying deployment..."
+        echo "=== Pods Status ==="
         oc get pods
-        oc get route frontend
-        
-        # Get application URL
-        APP_URL=$(oc get route frontend -o jsonpath='{.spec.host}')
-        echo "Application URL: https://$APP_URL"
-        
-        # Wait for application to be ready
-        sleep 30
-        
-        # Test health endpoint
-        curl -f https://$APP_URL/health || echo "Health check pending..."
-
-    - name: Deployment Summary
-      run: |
-        echo "=== DEPLOYMENT COMPLETE ==="
-        echo "Application: https://$(oc get route frontend -o jsonpath='{.spec.host}')"
-        echo "Backend replicas: $(oc get deployment backend -o jsonpath='{.status.replicas}')"
-        echo "Frontend replicas: $(oc get deployment frontend -o jsonpath='{.status.replicas}')"
-        echo "=========================="
+        echo ""
+        echo "=== Deployments ==="
+        oc get deployments
+        echo ""
+        echo "=== Application URL ==="
+        echo "https://$(oc get route frontend -o jsonpath='{.spec.host}')"
