@@ -77,13 +77,13 @@ jobs:
 
     - name: Update Backend deployment
       run: |
-        oc set image deployment/backend backend=${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BACKEND }}:latest
-        oc rollout status deployment/backend
+        oc set image deployment/backend backend=${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BACKEND }}:latest -n ${{ secrets.OPENSHIFT_NAMESPACE }}
+        oc rollout status deployment/backend -n ${{ secrets.OPENSHIFT_NAMESPACE }}
 
     - name: Update Frontend deployment
       run: |
-        oc set image deployment/frontend frontend=${{ env.REGISTRY }}/${{ env.IMAGE_NAME_FRONTEND }}:latest
-        oc rollout status deployment/frontend
+        oc set image deployment/frontend frontend=${{ env.REGISTRY }}/${{ env.IMAGE_NAME_FRONTEND }}:latest -n ${{ secrets.OPENSHIFT_NAMESPACE }}
+        oc rollout status deployment/frontend -n ${{ secrets.OPENSHIFT_NAMESPACE }}
 
     - name: Verify deployment
       run: |
