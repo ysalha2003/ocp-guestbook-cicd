@@ -16,6 +16,9 @@ spec:
         app: backend
         tier: backend
     spec:
+          # Uncomment when using private GHCR packages
+      # imagePullSecrets:
+      #   - name: ghcr-secret
       containers:
       - name: backend
         # Changed to use GHCR instead of OpenShift internal registry
@@ -67,9 +70,13 @@ spec:
             port: 8080
           initialDelaySeconds: 5
           periodSeconds: 5
-        resources:
+    
           limits:
             memory: 256Mi
+                      cpu: "500m"  # 0.5 CPU core
+        requests:
+          memory: 128Mi
+          cpu: "250m"  # 0.25 CPU core
 ---
 apiVersion: v1
 kind: Service
