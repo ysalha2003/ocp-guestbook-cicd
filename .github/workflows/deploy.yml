@@ -122,12 +122,14 @@ jobs:
       if: steps.changes.outputs.backend_changed == 'true'
       run: |
         oc set image deployment/backend backend=${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BACKEND }}:latest -n ${{ secrets.OPENSHIFT_PROJECT }}
+        oc rollout restart deployment/backend -n ${{ secrets.OPENSHIFT_PROJECT }}
         oc rollout status deployment/backend -n ${{ secrets.OPENSHIFT_PROJECT }}
 
     - name: Update Frontend deployment
       if: steps.changes.outputs.frontend_changed == 'true'
       run: |
         oc set image deployment/frontend frontend=${{ env.REGISTRY }}/${{ env.IMAGE_NAME_FRONTEND }}:latest -n ${{ secrets.OPENSHIFT_PROJECT }}
+        oc rollout restart deployment/frontend -n ${{ secrets.OPENSHIFT_PROJECT }}
         oc rollout status deployment/frontend -n ${{ secrets.OPENSHIFT_PROJECT }}
 
     - name: Verify deployment
