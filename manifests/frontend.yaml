@@ -16,9 +16,8 @@ spec:
         app: frontend
         tier: frontend
     spec:
-      # Uncomment when using private GHCR packages
-      # imagePullSecrets:
-      #   - name: ghcr-secret
+      imagePullSecrets:
+        - name: ghcr-secret
       containers:
       - name: frontend
         image: ghcr.io/ysalha2003/ocp-guestbook-cicd/frontend:latest
