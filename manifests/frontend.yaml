@@ -16,26 +16,23 @@ spec:
         app: frontend
         tier: frontend
     spec:
-          # Uncomment when using private GHCR packages
+      # Uncomment when using private GHCR packages
       # imagePullSecrets:
       #   - name: ghcr-secret
       containers:
       - name: frontend
-        # Changed to use GHCR
         image: ghcr.io/ysalha2003/ocp-guestbook-cicd/frontend:latest
         imagePullPolicy: Always
         ports:
         - containerPort: 8080
           name: http
         resources:
-                limits:
-          memory: 128Mi
-          cpu: "200m"  # 0.2 CPU core
-        requests:
-          memory: 64Mi
-          cpu: "100m"  # 0.1 CPU core
           limits:
             memory: 128Mi
+            cpu: "200m"
+          requests:
+            memory: 64Mi
+            cpu: "100m"
 ---
 apiVersion: v1
 kind: Service
