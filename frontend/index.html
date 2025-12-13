@@ -195,14 +195,33 @@
             border-radius: 8px;
             margin-bottom: 20px;
         }
+        
+        /* Live clock styles */
+        .live-clock {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 10px;
+            border-radius: 8px;
+            margin-top: 10px;
+            font-size: 0.9em;
+        }
+        
+        .clock-time {
+            font-weight: bold;
+            color: #ffeb3b;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
             <h1>📝 Gästbok</h1>
-                        <h2 style="color: red; background: yellow; padding: 20px; text-align: center;">🚀 CI/CD TEST - Updated at 5:15 PM CET - December 13, 2025</h2>
+            <h2 style="color: red; background: yellow; padding: 20px; text-align: center; border-radius: 10px;">
+                🚀 CI/CD TEST - Uppdaterad: <span id="currentTime">17:15 CET - 13 december 2025</span>
+            </h2>
             <p>OpenShift Lab - Distribuerad Applikation 1</p>
+            <div class="live-clock">
+                Aktuell tid: <span id="liveClock" class="clock-time">17:15:00</span>
+            </div>
         </div>
         
         <div class="stats" id="stats">
@@ -213,6 +232,10 @@
             <div class="stat-item">
                 <div class="stat-value" id="cacheStatus">-</div>
                 <div class="stat-label">Cache</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="serverTime">-</div>
+                <div class="stat-label">Server Tid</div>
             </div>
         </div>
         
@@ -238,6 +261,25 @@
     </div>
 
     <script>
+        // Live clock functionality
+        function updateLiveClock() {
+            const now = new Date();
+            const hours = now.getHours().toString().padStart(2, '0');
+            const minutes = now.getMinutes().toString().padStart(2, '0');
+            const seconds = now.getSeconds().toString().padStart(2, '0');
+            
+            document.getElementById('liveClock').textContent = `${hours}:${minutes}:${seconds}`;
+            
+            // Update server time in stats
+            document.getElementById('serverTime').textContent = `${hours}:${minutes}`;
+        }
+        
+        // Initial clock update
+        updateLiveClock();
+        
+        // Update clock every second
+        setInterval(updateLiveClock, 1000);
+        
         async function loadEntries() {
             try {
                 const response = await fetch('/api/entries');
@@ -330,6 +372,28 @@
             loadEntries();
             loadStats();
         }, 30000);
+        
+        // Format update time for the CI/CD banner
+        function formatUpdateTime() {
+            const now = new Date();
+            const options = {
+                hour: '2-digit',
+                minute: '2-digit',
+                timeZone: 'CET'
+            };
+            const timeString = now.toLocaleTimeString('sv-SE', options);
+            const dateString = now.toLocaleDateString('sv-SE', {
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric'
+            });
+            return `${timeString} CET - ${dateString}`;
+        }
+        
+        // Update the CI/CD banner with current time
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('currentTime').textContent = formatUpdateTime();
+        });
     </script>
 </body>
 </html>
