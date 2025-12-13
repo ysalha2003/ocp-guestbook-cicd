@@ -19,19 +19,31 @@ spec:
       imagePullSecrets:
         - name: ghcr-secret
       containers:
-      - name: frontend
-        image: ghcr.io/ysalha2003/ocp-guestbook-cicd/frontend:latest
-        imagePullPolicy: Always
-        ports:
-        - containerPort: 8080
-          name: http
-        resources:
-          limits:
-            memory: 128Mi
-            cpu: "200m"
-          requests:
-            memory: 64Mi
-            cpu: "100m"
+        - name: frontend
+          image: ghcr.io/ysalha2003/ocp-guestbook-cicd/frontend:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+              name: http
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            limits:
+              memory: 128Mi
+              cpu: "200m"
+            requests:
+              memory: 64Mi
+              cpu: "100m"
 ---
 apiVersion: v1
 kind: Service
@@ -42,7 +54,7 @@ metadata:
     tier: frontend
 spec:
   ports:
-  - port: 8080
-    targetPort: 8080
+    - port: 8080
+      targetPort: 8080
   selector:
     app: frontend
