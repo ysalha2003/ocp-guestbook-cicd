@@ -167,6 +167,18 @@ oc logs POD_NAME
 - OpenShift deployment configuration
 - Documentation
 - Testing and verification
+- 
+**Anwar Mousa:**
+- Backend application development
+- Database and Redis integration
+- Multi-stage Docker build optimization
+- GHCR package configuration
+
+**Vineeta:**
+- Frontend application development  
+- Nginx configuration and deployment
+- Kubernetes manifest creation
+- Resource limits and health checks
 
 ## License
 
