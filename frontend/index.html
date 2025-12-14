@@ -65,6 +65,78 @@
             color: #856404;
         }
         
+        .version-history {
+            background: white;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        
+        .version-history h3 {
+            font-size: 1em;
+            font-weight: 600;
+            color: #1a1a1a;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .version-toggle {
+            background: none;
+            border: none;
+            color: #495057;
+            cursor: pointer;
+            padding: 4px 8px;
+            font-size: 0.875em;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+        
+        .version-toggle:hover {
+            background: #f8f9fa;
+        }
+        
+        .version-list {
+            display: none;
+        }
+        
+        .version-list.show {
+            display: block;
+        }
+        
+        .version-item {
+            padding: 8px 12px;
+            margin: 4px 0;
+            background: #f8f9fa;
+            border-radius: 4px;
+            font-size: 0.875em;
+            color: #495057;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .version-item.current {
+            background: #d4edda;
+            color: #155724;
+            font-weight: 500;
+        }
+        
+        .version-badge {
+            background: #6c757d;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.75em;
+            font-weight: 500;
+        }
+        
+        .version-item.current .version-badge {
+            background: #28a745;
+        }
+        
         .stats {
             background: white;
             border: 1px solid #e9ecef;
@@ -272,6 +344,12 @@
                 align-items: flex-start;
                 gap: 8px;
             }
+            
+            .version-item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 4px;
+            }
         }
     </style>
 </head>
@@ -279,13 +357,26 @@
     <div class="container">
         <div class="header">
             <h1>📝 Gästbok</h1>
-            <p>OpenShift Lab - Distribuerad Applikation</p>
+            <p>OpenShift Lab - Distribuerad Applikation 5</p>
             <div class="ci-banner">
                 <h2>🚀 CI/CD TEST - Deployment</h2>
                 <div class="deployment-info">
                     Byggd: <span id="buildTimestamp">__BUILD_TIMESTAMP__</span>
                 </div>
             </div>
+            
+            <div class="version-history">
+                <h3>
+                    Versionshistorik
+                    <button class="version-toggle" id="versionToggle" onclick="toggleVersionHistory()">
+                        Visa ▼
+                    </button>
+                </h3>
+                <div class="version-list" id="versionList">
+                    <!-- Will be populated by JavaScript -->
+                </div>
+            </div>
+            
             <div class="live-clock">
                 Aktuell tid: <span id="liveClock" class="clock-time">17:15:00</span>
             </div>
@@ -328,6 +419,87 @@
     </div>
 
     <script>
+        // Version history management
+        function trackBuildVersion() {
+            const currentBuild = document.getElementById('buildTimestamp').textContent;
+            
+            // Skip if placeholder hasn't been replaced yet
+            if (currentBuild === '__BUILD_TIMESTAMP__') {
+                return;
+            }
+            
+            // Get existing version history from sessionStorage
+            let versionHistory = JSON.parse(sessionStorage.getItem('versionHistory') || '[]');
+            
+            // Check if this version already exists
+            const existingIndex = versionHistory.findIndex(v => v.timestamp === currentBuild);
+            
+            if (existingIndex === -1) {
+                // Add new version with visit timestamp
+                versionHistory.unshift({
+                    timestamp: currentBuild,
+                    visitedAt: new Date().toISOString()
+                });
+                
+                // Keep only last 5 versions
+                versionHistory = versionHistory.slice(0, 5);
+                
+                // Save back to sessionStorage
+                sessionStorage.setItem('versionHistory', JSON.stringify(versionHistory));
+            }
+            
+            displayVersionHistory(versionHistory, currentBuild);
+        }
+        
+        function displayVersionHistory(versions, currentBuild) {
+            const versionList = document.getElementById('versionList');
+            
+            if (versions.length === 0) {
+                versionList.innerHTML = '<div class="version-item">Ingen historik tillgänglig än</div>';
+                return;
+            }
+            
+            versionList.innerHTML = versions.map((version, index) => {
+                const isCurrent = version.timestamp === currentBuild;
+                const visitDate = new Date(version.visitedAt);
+                const relativeTime = getRelativeTime(visitDate);
+                
+                return `
+                    <div class="version-item ${isCurrent ? 'current' : ''}">
+                        <span>${version.timestamp}</span>
+                        <span class="version-badge">${isCurrent ? 'Aktuell' : relativeTime}</span>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        function getRelativeTime(date) {
+            const now = new Date();
+            const diffMs = now - date;
+            const diffMins = Math.floor(diffMs / 60000);
+            const diffHours = Math.floor(diffMs / 3600000);
+            const diffDays = Math.floor(diffMs / 86400000);
+            
+            if (diffMins < 1) return 'Just nu';
+            if (diffMins < 60) return `${diffMins} min sedan`;
+            if (diffHours < 24) return `${diffHours}h sedan`;
+            if (diffDays === 1) return 'Igår';
+            return `${diffDays} dagar sedan`;
+        }
+        
+        function toggleVersionHistory() {
+            const versionList = document.getElementById('versionList');
+            const toggleButton = document.getElementById('versionToggle');
+            
+            if (versionList.classList.contains('show')) {
+                versionList.classList.remove('show');
+                toggleButton.textContent = 'Visa ▼';
+            } else {
+                versionList.classList.add('show');
+                toggleButton.textContent = 'Dölj ▲';
+            }
+        }
+        
         // Live clock functionality
         function updateLiveClock() {
             const now = new Date();
@@ -346,6 +518,9 @@
         
         // Update clock every second
         setInterval(updateLiveClock, 1000);
+        
+        // Track build version on page load
+        trackBuildVersion();
         
         async function loadEntries() {
             try {
