@@ -283,7 +283,7 @@
             <div class="ci-banner">
                 <h2>🚀 CI/CD TEST - Deployment</h2>
                 <div class="deployment-info">
-                    Byggd: <span id="buildTimestamp">14 december 2025 19:30 CET</span>
+                    Byggd: <span id="buildTimestamp">__BUILD_TIMESTAMP__</span>
                 </div>
             </div>
             <div class="live-clock">
@@ -410,7 +410,7 @@
                     body: JSON.stringify({ name, message })
                 });
                 
-                if response.ok) {
+                if (response.ok) {
                     document.getElementById('entryForm').reset();
                     await loadEntries();
                     await loadStats();
