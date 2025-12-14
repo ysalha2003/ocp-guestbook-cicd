@@ -11,10 +11,12 @@ COPY index.html /tmp/index.html
 
 # Generate build timestamp and inject it into the HTML
 RUN BUILD_TIME=$(TZ=Europe/Stockholm date '+%d %B %Y kl. %H:%M CET') && \
+    echo "=== BUILD TIMESTAMP ===" && \
     echo "Build timestamp: $BUILD_TIME" && \
     sed "s/__BUILD_TIMESTAMP__/$BUILD_TIME/g" /tmp/index.html > /usr/share/nginx/html/index.html && \
     rm /tmp/index.html && \
-    cat /usr/share/nginx/html/index.html | grep "Byggd:"
+    echo "=== VERIFICATION ===" && \
+    grep -A2 "Byggd:" /usr/share/nginx/html/index.html || echo "Timestamp not found!"
 
 EXPOSE 8080
 
