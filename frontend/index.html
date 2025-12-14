@@ -475,8 +475,12 @@
             const timestamp = buildElement.textContent.trim();
             updateDebug(`📅 Raw timestamp: "${timestamp}"`);
             
-            // Check if it's still the placeholder
-            if (timestamp === '__BUILD_TIMESTAMP__' || timestamp === '' || timestamp.includes('__')) {
+            // Check if it's still the placeholder - be more specific!
+
+            if (timestamp === '__BUILD_TIMESTAMP__' || 
+                timestamp === '' || 
+                timestamp.startsWith('__') || 
+                timestamp.endsWith('__')) {
                 updateDebug('⚠️ Timestamp is still placeholder');
                 return null;
             }
