@@ -65,6 +65,17 @@
             color: #856404;
         }
         
+        .debug-info {
+            background: #e7f3ff;
+            border: 1px solid #b3d9ff;
+            border-radius: 8px;
+            padding: 12px;
+            margin: 10px 0;
+            font-size: 0.8em;
+            color: #004085;
+            font-family: 'Courier New', monospace;
+        }
+        
         .version-history {
             background: white;
             border: 1px solid #e9ecef;
@@ -374,12 +385,17 @@
     <div class="container">
         <div class="header">
             <h1>📝 Gästbok</h1>
-            <p>OpenShift Lab - Distribuerad Applikation</p>
+            <p>OpenShift Lab - Distribuerad Applikation 5</p>
             <div class="ci-banner">
                 <h2>🚀 CI/CD TEST - Deployment</h2>
                 <div class="deployment-info">
                     Byggd: <span id="buildTimestamp">__BUILD_TIMESTAMP__</span>
                 </div>
+            </div>
+            
+            <!-- Debug info - remove after testing -->
+            <div class="debug-info" id="debugInfo">
+                Debug: Initializing...
             </div>
             
             <div class="version-history">
@@ -440,24 +456,43 @@
         const VERSION_STORAGE_KEY = 'guestbook_version_history';
         const MAX_VERSIONS = 5;
         
+        function updateDebug(message) {
+            const debugElement = document.getElementById('debugInfo');
+            if (debugElement) {
+                const timestamp = new Date().toLocaleTimeString('sv-SE');
+                debugElement.innerHTML += `<br>[${timestamp}] ${message}`;
+            }
+            console.log(message);
+        }
+        
         function getBuildTimestamp() {
             const buildElement = document.getElementById('buildTimestamp');
-            if (!buildElement) return null;
-            
-            const timestamp = buildElement.textContent.trim();
-            // Check if it's still the placeholder
-            if (timestamp === '__BUILD_TIMESTAMP__' || timestamp === '') {
+            if (!buildElement) {
+                updateDebug('❌ Build element not found');
                 return null;
             }
+            
+            const timestamp = buildElement.textContent.trim();
+            updateDebug(`📅 Raw timestamp: "${timestamp}"`);
+            
+            // Check if it's still the placeholder
+            if (timestamp === '__BUILD_TIMESTAMP__' || timestamp === '' || timestamp.includes('__')) {
+                updateDebug('⚠️ Timestamp is still placeholder');
+                return null;
+            }
+            
+            updateDebug(`✅ Valid timestamp found: "${timestamp}"`);
             return timestamp;
         }
         
         function loadVersionHistory() {
             try {
                 const stored = sessionStorage.getItem(VERSION_STORAGE_KEY);
-                return stored ? JSON.parse(stored) : [];
+                const history = stored ? JSON.parse(stored) : [];
+                updateDebug(`📚 Loaded ${history.length} version(s) from storage`);
+                return history;
             } catch (e) {
-                console.error('Error loading version history:', e);
+                updateDebug('❌ Error loading version history: ' + e.message);
                 return [];
             }
         }
@@ -465,21 +500,22 @@
         function saveVersionHistory(history) {
             try {
                 sessionStorage.setItem(VERSION_STORAGE_KEY, JSON.stringify(history));
+                updateDebug(`💾 Saved ${history.length} version(s) to storage`);
             } catch (e) {
-                console.error('Error saving version history:', e);
+                updateDebug('❌ Error saving version history: ' + e.message);
             }
         }
         
         function trackBuildVersion() {
+            updateDebug('🔍 Starting version tracking...');
+            
             const currentBuild = getBuildTimestamp();
             
             if (!currentBuild) {
-                console.log('Build timestamp not available yet');
+                updateDebug('⚠️ Cannot track - no valid timestamp');
                 displayVersionHistory([], null);
                 return;
             }
-            
-            console.log('Tracking build version:', currentBuild);
             
             let versionHistory = loadVersionHistory();
             
@@ -488,23 +524,27 @@
             
             if (existingIndex === -1) {
                 // Add new version at the beginning
-                versionHistory.unshift({
+                const newVersion = {
                     timestamp: currentBuild,
                     visitedAt: new Date().toISOString(),
                     visitCount: 1
-                });
+                };
+                versionHistory.unshift(newVersion);
+                updateDebug(`➕ Added new version: "${currentBuild}"`);
                 
                 // Keep only last MAX_VERSIONS
-                versionHistory = versionHistory.slice(0, MAX_VERSIONS);
+                if (versionHistory.length > MAX_VERSIONS) {
+                    versionHistory = versionHistory.slice(0, MAX_VERSIONS);
+                    updateDebug(`✂️ Trimmed to ${MAX_VERSIONS} versions`);
+                }
                 
                 saveVersionHistory(versionHistory);
-                console.log('New version added to history');
             } else {
                 // Update visit count for existing version
                 versionHistory[existingIndex].visitCount++;
                 versionHistory[existingIndex].lastVisitedAt = new Date().toISOString();
                 saveVersionHistory(versionHistory);
-                console.log('Updated existing version visit count');
+                updateDebug(`🔄 Updated existing version visit count to ${versionHistory[existingIndex].visitCount}`);
             }
             
             displayVersionHistory(versionHistory, currentBuild);
@@ -513,10 +553,14 @@
         function displayVersionHistory(versions, currentBuild) {
             const versionList = document.getElementById('versionList');
             
-            if (!versionList) return;
+            if (!versionList) {
+                updateDebug('❌ Version list element not found');
+                return;
+            }
             
             if (versions.length === 0) {
-                versionList.innerHTML = '<div class="no-history">Ingen versionshistorik tillgänglig ännu.<br>Besök sidan efter nya deployments för att se historik.</div>';
+                versionList.innerHTML = '<div class="no-history">Ingen versionshistorik tillgänglig ännu.<br><small>Timestamp måste injiceras vid build för att visa historik.</small></div>';
+                updateDebug('📭 No versions to display');
                 return;
             }
             
@@ -533,7 +577,7 @@
                 `;
             }).join('');
             
-            console.log('Displayed', versions.length, 'version(s)');
+            updateDebug(`✅ Displayed ${versions.length} version(s)`);
         }
         
         function getRelativeTime(date) {
@@ -674,7 +718,8 @@
         
         // Initialize everything when DOM is ready
         function initialize() {
-            console.log('=== Guestbook Initializing ===');
+            updateDebug('=== 🚀 Guestbook Starting ===');
+            updateDebug(`SessionStorage available: ${typeof(Storage) !== "undefined"}`);
             
             // Track version immediately
             trackBuildVersion();
@@ -693,7 +738,7 @@
                 loadStats();
             }, 30000);
             
-            console.log('=== Initialization Complete ===');
+            updateDebug('=== ✅ Initialization Complete ===');
         }
         
         // Run initialization when DOM is ready
