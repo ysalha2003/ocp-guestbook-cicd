@@ -92,6 +92,7 @@
             font-size: 0.875em;
             border-radius: 4px;
             transition: background 0.2s;
+            width: auto;
         }
         
         .version-toggle:hover {
@@ -99,42 +100,59 @@
         }
         
         .version-list {
-            display: none;
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
         }
         
         .version-list.show {
-            display: block;
+            max-height: 500px;
         }
         
         .version-item {
-            padding: 8px 12px;
-            margin: 4px 0;
+            padding: 12px 16px;
+            margin: 8px 0;
             background: #f8f9fa;
-            border-radius: 4px;
+            border-radius: 6px;
             font-size: 0.875em;
             color: #495057;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
         }
         
         .version-item.current {
             background: #d4edda;
             color: #155724;
             font-weight: 500;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .version-timestamp {
+            font-weight: 500;
         }
         
         .version-badge {
             background: #6c757d;
             color: white;
-            padding: 2px 8px;
+            padding: 4px 12px;
             border-radius: 12px;
             font-size: 0.75em;
-            font-weight: 500;
+            font-weight: 600;
+            white-space: nowrap;
         }
         
         .version-item.current .version-badge {
             background: #28a745;
+        }
+        
+        .no-history {
+            text-align: center;
+            color: #6c757d;
+            padding: 20px;
+            font-style: italic;
         }
         
         .stats {
@@ -233,7 +251,7 @@
             min-height: 120px;
         }
         
-        button {
+        button:not(.version-toggle) {
             background: #1a1a1a;
             color: white;
             border: none;
@@ -246,11 +264,11 @@
             width: 100%;
         }
         
-        button:hover {
+        button:not(.version-toggle):hover {
             background: #343a40;
         }
         
-        button:active {
+        button:not(.version-toggle):active {
             transform: scale(0.98);
         }
         
@@ -348,7 +366,6 @@
             .version-item {
                 flex-direction: column;
                 align-items: flex-start;
-                gap: 4px;
             }
         }
     </style>
@@ -357,7 +374,7 @@
     <div class="container">
         <div class="header">
             <h1>📝 Gästbok</h1>
-            <p>OpenShift Lab - Distribuerad Applikation</p>
+            <p>OpenShift Lab - Distribuerad Applikation 5</p>
             <div class="ci-banner">
                 <h2>🚀 CI/CD TEST - Deployment</h2>
                 <div class="deployment-info">
@@ -367,18 +384,18 @@
             
             <div class="version-history">
                 <h3>
-                    Versionshistorik
+                    <span>Versionshistorik (Session)</span>
                     <button class="version-toggle" id="versionToggle" onclick="toggleVersionHistory()">
                         Visa ▼
                     </button>
                 </h3>
                 <div class="version-list" id="versionList">
-                    <!-- Will be populated by JavaScript -->
+                    <div class="no-history">Laddar historik...</div>
                 </div>
             </div>
             
             <div class="live-clock">
-                Aktuell tid: <span id="liveClock" class="clock-time">17:15:00</span>
+                Aktuell tid: <span id="liveClock" class="clock-time">--:--:--</span>
             </div>
         </div>
         
@@ -419,38 +436,75 @@
     </div>
 
     <script>
-        // Version history management
-        function trackBuildVersion() {
-            const currentBuild = document.getElementById('buildTimestamp').textContent;
+        // Version history management with sessionStorage
+        const VERSION_STORAGE_KEY = 'guestbook_version_history';
+        const MAX_VERSIONS = 5;
+        
+        function getBuildTimestamp() {
+            const buildElement = document.getElementById('buildTimestamp');
+            if (!buildElement) return null;
             
-            // Skip if placeholder hasn't been replaced yet
-            if (currentBuild === '__BUILD_TIMESTAMP__' || !currentBuild) {
-                console.log('Build timestamp not yet available, skipping tracking');
+            const timestamp = buildElement.textContent.trim();
+            // Check if it's still the placeholder
+            if (timestamp === '__BUILD_TIMESTAMP__' || timestamp === '') {
+                return null;
+            }
+            return timestamp;
+        }
+        
+        function loadVersionHistory() {
+            try {
+                const stored = sessionStorage.getItem(VERSION_STORAGE_KEY);
+                return stored ? JSON.parse(stored) : [];
+            } catch (e) {
+                console.error('Error loading version history:', e);
+                return [];
+            }
+        }
+        
+        function saveVersionHistory(history) {
+            try {
+                sessionStorage.setItem(VERSION_STORAGE_KEY, JSON.stringify(history));
+            } catch (e) {
+                console.error('Error saving version history:', e);
+            }
+        }
+        
+        function trackBuildVersion() {
+            const currentBuild = getBuildTimestamp();
+            
+            if (!currentBuild) {
+                console.log('Build timestamp not available yet');
+                displayVersionHistory([], null);
                 return;
             }
             
-            // Get existing version history from sessionStorage
-            let versionHistory = JSON.parse(sessionStorage.getItem('versionHistory') || '[]');
+            console.log('Tracking build version:', currentBuild);
+            
+            let versionHistory = loadVersionHistory();
             
             // Check if this version already exists
             const existingIndex = versionHistory.findIndex(v => v.timestamp === currentBuild);
             
             if (existingIndex === -1) {
-                // Add new version with visit timestamp
+                // Add new version at the beginning
                 versionHistory.unshift({
                     timestamp: currentBuild,
-                    visitedAt: new Date().toISOString()
+                    visitedAt: new Date().toISOString(),
+                    visitCount: 1
                 });
                 
-                // Keep only last 5 versions
-                versionHistory = versionHistory.slice(0, 5);
+                // Keep only last MAX_VERSIONS
+                versionHistory = versionHistory.slice(0, MAX_VERSIONS);
                 
-                // Save back to sessionStorage
-                sessionStorage.setItem('versionHistory', JSON.stringify(versionHistory));
-                
-                console.log('New build version tracked:', currentBuild);
+                saveVersionHistory(versionHistory);
+                console.log('New version added to history');
             } else {
-                console.log('Build version already in history:', currentBuild);
+                // Update visit count for existing version
+                versionHistory[existingIndex].visitCount++;
+                versionHistory[existingIndex].lastVisitedAt = new Date().toISOString();
+                saveVersionHistory(versionHistory);
+                console.log('Updated existing version visit count');
             }
             
             displayVersionHistory(versionHistory, currentBuild);
@@ -459,8 +513,10 @@
         function displayVersionHistory(versions, currentBuild) {
             const versionList = document.getElementById('versionList');
             
+            if (!versionList) return;
+            
             if (versions.length === 0) {
-                versionList.innerHTML = '<div class="version-item">Ingen historik tillgänglig än</div>';
+                versionList.innerHTML = '<div class="no-history">Ingen versionshistorik tillgänglig ännu.<br>Besök sidan efter nya deployments för att se historik.</div>';
                 return;
             }
             
@@ -471,11 +527,13 @@
                 
                 return `
                     <div class="version-item ${isCurrent ? 'current' : ''}">
-                        <span>${version.timestamp}</span>
-                        <span class="version-badge">${isCurrent ? 'Aktuell' : relativeTime}</span>
+                        <span class="version-timestamp">${escapeHtml(version.timestamp)}</span>
+                        <span class="version-badge">${isCurrent ? '✓ Aktuell' : relativeTime}</span>
                     </div>
                 `;
             }).join('');
+            
+            console.log('Displayed', versions.length, 'version(s)');
         }
         
         function getRelativeTime(date) {
@@ -496,6 +554,8 @@
             const versionList = document.getElementById('versionList');
             const toggleButton = document.getElementById('versionToggle');
             
+            if (!versionList || !toggleButton) return;
+            
             if (versionList.classList.contains('show')) {
                 versionList.classList.remove('show');
                 toggleButton.textContent = 'Visa ▼';
@@ -512,35 +572,16 @@
             const minutes = now.getMinutes().toString().padStart(2, '0');
             const seconds = now.getSeconds().toString().padStart(2, '0');
             
-            document.getElementById('liveClock').textContent = `${hours}:${minutes}:${seconds}`;
+            const clockElement = document.getElementById('liveClock');
+            if (clockElement) {
+                clockElement.textContent = `${hours}:${minutes}:${seconds}`;
+            }
             
-            // Update server time in stats
-            document.getElementById('serverTime').textContent = `${hours}:${minutes}`;
+            const serverTimeElement = document.getElementById('serverTime');
+            if (serverTimeElement) {
+                serverTimeElement.textContent = `${hours}:${minutes}`;
+            }
         }
-        
-        // Initialize on DOM ready
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('DOM loaded, initializing...');
-            
-            // Track build version
-            trackBuildVersion();
-            
-            // Initial clock update
-            updateLiveClock();
-            
-            // Update clock every second
-            setInterval(updateLiveClock, 1000);
-            
-            // Load data
-            loadEntries();
-            loadStats();
-            
-            // Update data every 30 seconds
-            setInterval(() => {
-                loadEntries();
-                loadStats();
-            }, 30000);
-        });
         
         async function loadEntries() {
             try {
@@ -568,8 +609,10 @@
                     </div>
                 `).join('');
                 
-                // Uppdatera cache-indikator
-                document.getElementById('cacheStatus').textContent = cacheStatus === 'HIT' ? '✓' : '○';
+                const cacheStatusElement = document.getElementById('cacheStatus');
+                if (cacheStatusElement) {
+                    cacheStatusElement.textContent = cacheStatus === 'HIT' ? '✓' : '○';
+                }
                 
             } catch (error) {
                 console.error('Fel vid laddning av inlägg:', error);
@@ -578,51 +621,86 @@
             }
         }
         
-        // Ladda statistik
         async function loadStats() {
             try {
                 const response = await fetch('/api/stats');
                 const stats = await response.json();
-                document.getElementById('totalEntries').textContent = stats.total_entries_db || 0;
+                const totalEntriesElement = document.getElementById('totalEntries');
+                if (totalEntriesElement) {
+                    totalEntriesElement.textContent = stats.total_entries_db || 0;
+                }
             } catch (error) {
                 console.error('Fel vid laddning av statistik:', error);
             }
         }
         
-        // Skicka nytt inlägg
-        document.getElementById('entryForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            const name = document.getElementById('name').value;
-            const message = document.getElementById('message').value;
-            
-            try {
-                const response = await fetch('/api/entries', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ name, message })
-                });
-                
-                if (response.ok) {
-                    document.getElementById('entryForm').reset();
-                    await loadEntries();
-                    await loadStats();
-                } else {
-                    alert('Fel vid skapande av inlägg');
-                }
-            } catch (error) {
-                console.error('Fel:', error);
-                alert('Kunde inte skicka inlägg. Kontrollera att backend-tjänsten körs.');
-            }
-        });
-        
-        // Hjälpfunktion för att undvika XSS
         function escapeHtml(text) {
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
+        }
+        
+        // Form submission handler
+        const entryForm = document.getElementById('entryForm');
+        if (entryForm) {
+            entryForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                
+                const name = document.getElementById('name').value;
+                const message = document.getElementById('message').value;
+                
+                try {
+                    const response = await fetch('/api/entries', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ name, message })
+                    });
+                    
+                    if (response.ok) {
+                        entryForm.reset();
+                        await loadEntries();
+                        await loadStats();
+                    } else {
+                        alert('Fel vid skapande av inlägg');
+                    }
+                } catch (error) {
+                    console.error('Fel:', error);
+                    alert('Kunde inte skicka inlägg. Kontrollera att backend-tjänsten körs.');
+                }
+            });
+        }
+        
+        // Initialize everything when DOM is ready
+        function initialize() {
+            console.log('=== Guestbook Initializing ===');
+            
+            // Track version immediately
+            trackBuildVersion();
+            
+            // Start clock
+            updateLiveClock();
+            setInterval(updateLiveClock, 1000);
+            
+            // Load initial data
+            loadEntries();
+            loadStats();
+            
+            // Refresh data periodically
+            setInterval(() => {
+                loadEntries();
+                loadStats();
+            }, 30000);
+            
+            console.log('=== Initialization Complete ===');
+        }
+        
+        // Run initialization when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initialize);
+        } else {
+            initialize();
         }
     </script>
 </body>
