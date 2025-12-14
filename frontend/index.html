@@ -477,6 +477,17 @@
             
             // Check if it's still the placeholder - be more specific!
 
+                
+    // Detailed validation debugging
+    updateDebug(`🔍 Validation checks:`);
+    updateDebug(`  - Length: ${timestamp.length}`);
+    updateDebug(`  - First 2 chars: "${timestamp.substring(0, 2)}"`);
+    updateDebug(`  - Last 2 chars: "${timestamp.substring(timestamp.length - 2)}"`);
+    updateDebug(`  - Equals placeholder: ${timestamp === '__BUILD_TIMESTAMP__'}`);
+    updateDebug(`  - Is empty: ${timestamp === ''}`);
+    updateDebug(`  - Starts with __: ${timestamp.startsWith('__')}`);
+    updateDebug(`  - Ends with __: ${timestamp.endsWith('__')}`);
+
             if (timestamp === '__BUILD_TIMESTAMP__' || 
                 timestamp === '' || 
                 timestamp.startsWith('__') || 
