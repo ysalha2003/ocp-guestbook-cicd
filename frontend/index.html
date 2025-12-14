@@ -357,7 +357,7 @@
     <div class="container">
         <div class="header">
             <h1>📝 Gästbok</h1>
-            <p>OpenShift Lab - Distribuerad Applikation</p>
+            <p>OpenShift Lab - Distribuerad Applikation 5</p>
             <div class="ci-banner">
                 <h2>🚀 CI/CD TEST - Deployment</h2>
                 <div class="deployment-info">
@@ -424,7 +424,8 @@
             const currentBuild = document.getElementById('buildTimestamp').textContent;
             
             // Skip if placeholder hasn't been replaced yet
-            if (currentBuild === '__BUILD_TIMESTAMP__') {
+            if (currentBuild === '__BUILD_TIMESTAMP__' || !currentBuild) {
+                console.log('Build timestamp not yet available, skipping tracking');
                 return;
             }
             
@@ -446,6 +447,10 @@
                 
                 // Save back to sessionStorage
                 sessionStorage.setItem('versionHistory', JSON.stringify(versionHistory));
+                
+                console.log('New build version tracked:', currentBuild);
+            } else {
+                console.log('Build version already in history:', currentBuild);
             }
             
             displayVersionHistory(versionHistory, currentBuild);
@@ -513,14 +518,29 @@
             document.getElementById('serverTime').textContent = `${hours}:${minutes}`;
         }
         
-        // Initial clock update
-        updateLiveClock();
-        
-        // Update clock every second
-        setInterval(updateLiveClock, 1000);
-        
-        // Track build version on page load
-        trackBuildVersion();
+        // Initialize on DOM ready
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM loaded, initializing...');
+            
+            // Track build version
+            trackBuildVersion();
+            
+            // Initial clock update
+            updateLiveClock();
+            
+            // Update clock every second
+            setInterval(updateLiveClock, 1000);
+            
+            // Load data
+            loadEntries();
+            loadStats();
+            
+            // Update data every 30 seconds
+            setInterval(() => {
+                loadEntries();
+                loadStats();
+            }, 30000);
+        });
         
         async function loadEntries() {
             try {
@@ -604,16 +624,6 @@
             div.textContent = text;
             return div.innerHTML;
         }
-        
-        // Ladda data vid start
-        loadEntries();
-        loadStats();
-        
-        // Uppdatera var 30:e sekund
-        setInterval(() => {
-            loadEntries();
-            loadStats();
-        }, 30000);
     </script>
 </body>
 </html>
