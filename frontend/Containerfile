@@ -13,8 +13,7 @@ COPY index.html /tmp/index.html
 RUN BUILD_TIME=$(TZ=Europe/Stockholm date '+%d %B %Y kl. %H:%M CET') && \
     echo "=== BUILD TIMESTAMP ===" && \
     echo "Build timestamp: $BUILD_TIME" && \
-    sed "s/__BUILD_TIMESTAMP__/$BUILD_TIME/g" /tmp/index.html > /usr/share/nginx/html/index.html && \
-    rm /tmp/index.html && \
+    sed "s|__BUILD_TIMESTAMP__|$BUILD_TIME|g" /tmp/index.html > /usr/share/nginx/html/index.html && \    rm /tmp/index.html && \
     echo "=== VERIFICATION ===" && \
     grep -A2 "Byggd:" /usr/share/nginx/html/index.html || echo "Timestamp not found!"
 
