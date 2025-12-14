@@ -283,7 +283,7 @@
             <div class="ci-banner">
                 <h2>🚀 CI/CD TEST - Deployment</h2>
                 <div class="deployment-info">
-                    Byggd: <span id="buildTimestamp">-</span>
+                    Byggd: <span id="buildTimestamp">14 december 2025 19:30 CET</span>
                 </div>
             </div>
             <div class="live-clock">
@@ -328,24 +328,6 @@
     </div>
 
     <script>
-        // Build timestamp - set at build/deployment time
-        const BUILD_TIMESTAMP = new Date().toISOString();
-        
-        // Format and display build timestamp
-        function displayBuildTimestamp() {
-            const buildDate = new Date(BUILD_TIMESTAMP);
-            const options = {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit',
-                timeZone: 'CET'
-            };
-            const formattedDate = buildDate.toLocaleDateString('sv-SE', options);
-            document.getElementById('buildTimestamp').textContent = `${formattedDate} CET`;
-        }
-        
         // Live clock functionality
         function updateLiveClock() {
             const now = new Date();
@@ -359,8 +341,7 @@
             document.getElementById('serverTime').textContent = `${hours}:${minutes}`;
         }
         
-        // Initial updates
-        displayBuildTimestamp();
+        // Initial clock update
         updateLiveClock();
         
         // Update clock every second
@@ -429,7 +410,7 @@
                     body: JSON.stringify({ name, message })
                 });
                 
-                if (response.ok) {
+                if response.ok) {
                     document.getElementById('entryForm').reset();
                     await loadEntries();
                     await loadStats();
